@@ -1,149 +1,190 @@
 /*
  * data.js — all game content as plain data (no build step, no fetch).
- * Loaded as a global so it works from file:// and any static host.
  *
- * LORE NOTE: every codex `summary` is an original paraphrase written for this
- * project. Citations point to where in the books the topic is explored; they
- * are references, not quotations. No verbatim text from the novels is included.
+ * LORE NOTE: every codex `summary` and character description is an ORIGINAL
+ * paraphrase written for this project, stating established facts about the
+ * setting and its characters. Citations point to where a topic is explored in
+ * the books — they are references, not quotations. No verbatim text from the
+ * novels is included.
  */
 const GAME_DATA = {
 
   // ---- Player's toolkit -------------------------------------------------
-  // The challenge is choosing the RIGHT tool, not having enough of them.
   approaches: {
     strike:  { id: 'strike',  name: 'Strike — iron & steel',            kind: 'physical', desc: 'A mortal blow with blade or fist.' },
     tellann: { id: 'tellann', name: 'Tellann — the Warren of Fire',     kind: 'magic', aspect: 'fire', desc: 'Draw on the fire-warren of the T’lan Imass.' },
     omtose:  { id: 'omtose',  name: 'Omtose Phellack — the Ice Warren', kind: 'magic', aspect: 'ice',  desc: 'The elder Jaghut warren of cold and stillness.' },
-    otataral:{ id: 'otataral',name: 'Otataral shard',                   kind: 'nullify', desc: 'Dead ore that smothers sorcery. One use.', uses: 1 },
+    otataral:{ id: 'otataral',name: 'Otataral shard',                   kind: 'nullify', desc: 'Dead ore that smothers sorcery.' },
   },
 
-  // ---- Enemies ----------------------------------------------------------
-  // weakness  : approaches that resolve the fight in your favour
-  // backfire  : approaches that harm you or empower the foe
-  // neutral   : approaches that do little and invite retaliation
+  // ---- Encounters: named characters -------------------------------------
+  // Each has a COMBAT profile (weakness/backfire/neutral) AND non-combat
+  // `interactions`. Interactions may need study; without it they use `blind`.
   enemies: {
-    swarm: {
-      id: 'swarm', name: 'A Boiling of Rats', title: 'D’ivers',
-      nature: 'D’ivers',
-      wounds: 2,
-      intro: 'The ground itself seems to move — a single will wearing a thousand small bodies.',
+
+    // The convergence-mad D'ivers — a fight OR a clever evasion.
+    gryllen: {
+      id: 'gryllen', name: 'Gryllen', title: 'D’ivers — the Tide of Madness',
+      nature: 'D’ivers', wounds: 2,
+      encounterLabel: 'The ground itself is moving toward you.',
+      intro: 'A boiling carpet of rats pours over the rocks — one ravenous will wearing a thousand small bodies. Gryllen has your scent.',
       clues: {
-        observe: 'Cut one and the rest simply flow around the wound. There is no single body to kill.',
-        probe:   'When you press it, the mass recoils as one — but the heat of your lantern makes it seethe and scatter.',
-        recall:  'One mind, many forms. A duel means nothing to it; only something that strikes *all* of it at once will matter.',
+        observe: 'Kill one and the tide simply flows around the gap. There is no single body here to end.',
+        probe:   'It recoils as one when pressed — but it strains toward the greater scents of power on the wind, barely holding to you.',
+        recall:  'A D’ivers on the Path of Hands: one mad will in a thousand bodies. No duel touches it — only fire across the whole mass. Or, since it hunts the strongest scent of power, give it a greater one to chase and be gone.',
       },
-      codexRefs: ['soletaken_divers'],
-      weakness: ['tellann'],            // area fire scours the whole swarm
+      codexRefs: ['soletaken_divers', 'path_of_hands', 'tellann'],
+      weakness: ['tellann'],
       backfire: [],
-      neutral:  ['strike', 'omtose', 'otataral'], // single-target / anti-magic does nothing to a mundane swarm
-      onWeakness: 'Fire washes across the whole boiling mass at once. With no single body to flee into, the D’ivers dies as one.',
+      neutral:  ['strike', 'omtose', 'otataral'],
+      onWeakness: 'Fire washes across the whole tide at once. With no single body to flee into, Gryllen dies as one screaming mass.',
       onNeutral: 'You kill a dozen. A thousand remain, and they are on you.',
+      interactions: [
+        { id: 'misdirect', label: 'Draw it off with a greater scent', needsStudy: true,
+          success: { text: 'You know what drives it: the Path of Hands, and the strongest spoor of power. You fling a warren wide toward the barrows and the sea — and Gryllen turns, hungering, away from you. You are already gone.', effect: 'resolve' },
+          blind:   { text: 'You simply run. A tide of madness is faster than any mortal. It surges over your heels.', effect: 'provoke', dmg: 1 } },
+      ],
     },
 
-    imass: {
-      id: 'imass', name: 'A Kneeling Warrior of Bone', title: 'T’lan Imass',
-      nature: 'Undead',
-      wounds: 3,
-      intro: 'Dust and dried sinew over ancient bone. It has waited here longer than the kingdom that forgot it.',
+    // The honourable undead — magic is wasted; but he may be no enemy at all.
+    tool: {
+      id: 'tool', name: 'Onos T’oolan', title: 'T’lan Imass — the First Sword',
+      nature: 'Undead', wounds: 3,
+      encounterLabel: 'Something rises from the open barrow.',
+      intro: 'Dust and dried sinew over ancient bone; flint weapons worn smooth by ages. The T’lan Imass regards you with the patience of something that stopped fearing death a hundred thousand years ago.',
       clues: {
         observe: 'Sorcery washes over it and does nothing — it endured the death of its own flesh; it will endure yours.',
-        probe:   'It does not bleed, does not tire, does not fear. But its frame is brittle; a limb, once shattered, does not knit.',
-        recall:  'These are the undead of the Ritual of Tellann. Magic is wasted on them. They must be *broken* — or unmade by dead ore.',
+        probe:   'It does not strike. It waits — measuring whether you are enemy or merely fool. Its frame is brittle, though; a limb once shattered does not knit.',
+        recall:  'Onos T’oolan, once First Sword of the T’lan Imass. Sorcery is wasted on the ancient dead — they must be shattered, or unmade by otataral. But this one keeps its honour. It may not be an enemy. Name yourself no foe of the Imass, and it may lower its blade.',
       },
-      codexRefs: ['tlan_imass', 'otataral'],
-      weakness: ['strike', 'otataral'], // shatter it physically, or unmake its ritual with otataral
+      codexRefs: ['tlan_imass', 'otataral', 'tool_lore'],
+      weakness: ['strike', 'otataral'],
       backfire: [],
-      neutral:  ['tellann', 'omtose'],  // it survived worse fire and ice than you can raise
-      onWeakness: 'You do not try to kill what is already dead — you shatter it, driving the pieces apart until the will holding them together fails.',
-      onNeutral: 'Your warren breaks over it like surf on a cliff. It steps through the light and closes.',
+      neutral:  ['tellann', 'omtose'],
+      onWeakness: 'You do not try to kill what is already dead — you shatter it, driving the pieces apart until the will binding them fails.',
+      onNeutral: 'Your warren breaks over it like surf on stone. It endures, and takes a slow step closer.',
+      interactions: [
+        { id: 'speak', label: 'Declare yourself no enemy of the Imass', needsStudy: true,
+          success: { text: 'You name the Ritual of Tellann and the long war with respect, and swear you are no foe of the Imass. The ancient warrior studies you, then lowers its flint blade. In a voice like grinding stone it warns you: beware the shore, and the Lord who waits there.', effect: 'resolve', boon: { study: ['anomander_rake'] } },
+          blind:   { text: 'You babble something about mercy. It does not understand mercy, and it does not trust ignorance. The flint sword moves.', effect: 'provoke', dmg: 1 } },
+      ],
     },
 
-    dragon: {
-      id: 'dragon', name: 'The Shape That Was A Man', title: 'Soletaken Eleint',
-      nature: 'Soletaken',
-      wounds: 3,
-      boss: true,
-      intro: 'The air splits. Where a robed figure stood, a dragon now fills the sky — blood of the Eleint, and it has taken your measure already.',
+    // The boss you must NOT fight. Recognizing that is the whole puzzle.
+    rake: {
+      id: 'rake', name: 'Anomander Rake', title: 'Son of Darkness',
+      nature: 'Ascendant', wounds: 99, boss: true,
+      noFight: true, attackLethal: true,
+      onAttack: 'You raise a weapon against the Lord of Moon’s Spawn. Kurald Galain answers — the dark that came before light — and Dragnipur is already clearing its sheath. You never see the stroke that ends you.',
+      encounterLabel: 'The robed figure at the waterline turns to face you.',
+      intro: 'The robed figure at the waterline turns. Silver hair, black skin, eyes like a storm at dusk — and at his hip a sword that seems to drink the daylight. The air itself leans away from him.',
       clues: {
-        observe: 'It is wreathed in its own fire. Meeting that flame with flame would be feeding a furnace.',
-        probe:   'Its power pours from a warren older than the gods. Cut off from that well, it is only flesh and fury.',
-        recall:  'A single soul that becomes a dragon — Soletaken. Its strength is sorcerous. Smother the cold at its heart, or cut it from magic entirely, and the dragon becomes merely large.',
+        observe: 'He does not reach for the sword. He simply watches you, unhurried, as a mountain watches weather. Every instinct you own says: this is death, if you make it so.',
+        probe:   'You take one step and the shadows at his feet stir like living things. He tilts his head — patient, almost sorrowful — waiting to see what you will be foolish enough to do.',
+        recall:  'This is Anomander Rake — Soletaken black dragon, bearer of Dragnipur, Lord of the Tiste Andii of Moon’s Spawn. Raise a hand against him and you are already dead. But he has no quarrel with the likes of you. Withdraw, or speak with respect, and walk away breathing.',
       },
-      codexRefs: ['soletaken_divers', 'eleint', 'otataral', 'omtose'],
-      weakness: ['otataral', 'omtose'], // strip its magic, or smother dragonfire with the ice warren
-      backfire: ['tellann'],            // feeding fire to a fire-blooded dragon empowers it
-      neutral:  ['strike'],
-      onWeakness: 'You do not out-burn a dragon — you take the fire away. Robbed of the warren that makes it terrible, the Eleint is grounded, and mortal steel finishes what wit began.',
-      onBackfire: 'Your fire pours into it like tribute. The dragon drinks the warren and grows brighter — and turns that brightness on you.',
-      onNeutral: 'Steel scores a scale and skitters away. The dragon has not yet begun to try.',
+      codexRefs: ['anomander_rake', 'kurald_galain', 'dragnipur', 'soletaken_divers', 'ascendants'],
+      weakness: [], backfire: [], neutral: [],
+      interactions: [
+        { id: 'withdraw', label: 'Withdraw slowly, hands open', needsStudy: false,
+          success: { text: 'You lower your eyes, open your hands, and back away step by careful step. Anomander Rake watches you go, unmoving, and says nothing. The wind off the sea is the only sound. You live — because you understood the one move that mattered: you did not raise your hand.', effect: 'resolve', win: true } },
+        { id: 'parley', label: 'Name him, and speak with respect', needsStudy: true,
+          success: { text: 'You name him — Lord of Moon’s Spawn, Son of Darkness — and say plainly that you seek no quarrel. Something almost like weary amusement crosses his face. “Then we have none,” he answers, and stands aside. You pass, and the shore lets you go.', effect: 'resolve', win: true },
+          blind:   { text: 'You start to speak without the faintest idea what you are addressing. The dark at his feet rises to your knees; the temperature drops. His gaze settles on you like a closing door. You sense, with perfect clarity, that a second word may be your last.', effect: 'provoke', dmg: 1 } },
+      ],
+    },
+
+    // Pure non-combat: the man you cannot fight and should not want to.
+    kruppe: {
+      id: 'kruppe', name: 'Kruppe', title: 'of Darujhistan',
+      nature: 'Mortal', wounds: 1,
+      noFight: true, attackLethal: false,
+      onAttack: 'You reach for a weapon. Somehow Kruppe is already two steps aside, dabbing his lips with a kerchief, wounded only in his boundless feelings. “Violence! And upon Kruppe, of all innocents!” You feel, obscurely, like a fool.',
+      encounterLabel: 'A round little man waves you over as if you were old friends.',
+      intro: 'A stout, beaming man in a food-stained waistcoat spreads his arms as though you were the very person he has awaited all his days. “Ahh! Kruppe knew you would come. Kruppe knows a great many things.”',
+      clues: {
+        observe: 'He talks without pause and says, apparently, nothing — yet his small eyes are quick, and miss nothing at all.',
+        probe:   'Press him and the words only multiply, folding around your question like custard around a spoon. There is cunning under all that flattery.',
+        recall:  'Only Kruppe — of Darujhistan, hero of his own endless tale, harmless as he insists and cleverer than he admits, a man touched by luck and by dreams. There is nothing here to fight. Listen, and you may leave richer than you came.',
+      },
+      codexRefs: ['kruppe'],
+      weakness: [], backfire: [], neutral: [],
+      interactions: [
+        { id: 'listen', label: 'Let Kruppe talk', needsStudy: false,
+          success: { text: 'You let him ramble — of pastries, of destiny, of his own unmatched modesty. Then, mid-flourish, he presses something cold into your palm: a dull red shard. “A trifle,” he says, “dead to all sorcery, and worth more than gold on a certain grey shore. Speak gently to the Son of Darkness, friend. Kruppe would hate to lose so promising an acquaintance.”', effect: 'resolve', boon: { otataral: 1, study: ['anomander_rake'] } } },
+        { id: 'walkon', label: 'Nod politely and walk on', needsStudy: false,
+          success: { text: 'You make your excuses. Kruppe waves you off with a pastry and a blessing you suspect is also a joke at your expense.', effect: 'resolve' } },
+      ],
     },
   },
 
   // ---- Codex / glossary -------------------------------------------------
-  // Research here. Reading an entry marks its `revealsWeaknessFor` foes as
-  // "studied", which unlocks the reliable Recall Lore read in an encounter.
   codex: [
-    {
-      id: 'warrens', title: 'The Warrens', category: 'Magic',
-      summary: 'Magic in this world is drawn through warrens — accessible realms, each with its own aspect (fire, ice, dark, light, death, shadow, and more). A mage opens a warren and channels its power. Because warrens have natures, they also have opposites: the right aspect against the wrong foe is decisive, and the wrong one can be worse than nothing.',
-      citation: 'Malazan Book of the Fallen — Gardens of the Moon, and throughout the series',
-      revealsWeaknessFor: [],
-    },
-    {
-      id: 'soletaken_divers', title: 'Soletaken & D’ivers', category: 'Shapeshifters',
-      summary: 'A shapeshifting curse, or gift, of two kinds. Soletaken take a single other form — often a great beast, sometimes a dragon. D’ivers instead become many bodies sharing one mind, from a pack of wolves to a swarm of vermin. The distinction matters in a fight: a Soletaken is one powerful body to face, while a D’ivers cannot be beaten by killing any single form — only by something that reaches all of it at once.',
-      citation: 'Malazan Book of the Fallen — Deadhouse Gates (the Path of Hands)',
-      revealsWeaknessFor: ['swarm'],
-    },
-    {
-      id: 'eleint', title: 'The Eleint & Dragons', category: 'Powers',
-      summary: 'Dragons — the Eleint — are creatures of pure sorcery, tied to the eldest warren of all. Their power is not muscle but magic; a dragon’s fire is warren-fire. To answer such a thing with more fire is to feed it. The counter is to deny it its power: smother it with an opposed elder aspect, or sever it from magic altogether.',
-      citation: 'Malazan Book of the Fallen — dragons appear throughout; lineage explored in later volumes',
-      revealsWeaknessFor: ['dragon'],
-    },
-    {
-      id: 'tlan_imass', title: 'The T’lan Imass', category: 'Elder Races',
-      summary: 'An ancient people who performed a ritual binding themselves to undeath to wage an endless war — bodies of dried sinew and bone that no longer live and so cannot truly be killed. Sorcery is largely wasted on them; they simply endure it. What ends a T’lan Imass is force enough to shatter its frame past reassembly, or dead ore that unmakes the ritual holding it together.',
-      citation: 'Malazan Book of the Fallen — the Ritual of Tellann, Gardens of the Moon onward',
-      revealsWeaknessFor: ['imass'],
-    },
-    {
-      id: 'tellann', title: 'Tellann — the Fire Warren', category: 'Magic',
-      summary: 'The fire-aspected warren bound up with the T’lan Imass and their ritual. As a weapon it excels where a single body must be scoured or a mass must be burned all at once — but against a foe whose very nature is fire, or one that already survived the ritual’s flames, it is the wrong tool.',
-      citation: 'Malazan Book of the Fallen — associated with the T’lan Imass',
-      revealsWeaknessFor: ['swarm'],
-    },
-    {
-      id: 'omtose', title: 'Omtose Phellack — the Ice Warren', category: 'Magic',
-      summary: 'The elder warren of the Jaghut: cold, stillness, and the weight of ages. Ice against fire is the oldest opposition there is. Raised against a creature of flame — even a fire-blooded dragon — Omtose Phellack does not try to out-burn it; it smothers the fire at its heart.',
-      citation: 'Malazan Book of the Fallen — the Jaghut and Omtose Phellack',
-      revealsWeaknessFor: ['dragon'],
-    },
-    {
-      id: 'otataral', title: 'Otataral', category: 'Anti-Magic',
-      summary: 'A reddish dead ore that negates sorcery. Near it, warrens close and magic simply stops. It is the great equalizer: it can strip an Ascendant, a mage, or a dragon of the power that makes it dangerous, and it can unmake rituals of undeath. The catch — it does not discriminate. Otataral smothers your magic just as surely as your enemy’s.',
-      citation: 'Malazan Book of the Fallen — Deadhouse Gates (the otataral mines)',
-      revealsWeaknessFor: ['dragon', 'imass'],
-    },
-    {
-      id: 'ascendants', title: 'Ascendants & Gods', category: 'Powers',
-      summary: 'Ascendants are beings who have risen to great power; some become gods, tied to an aspect or a role they can never fully escape. You do not defeat such things by matching strength. You defeat them by understanding what binds them — the nature they cannot set aside — and turning it against them.',
-      citation: 'Malazan Book of the Fallen — a central theme across the series',
-      revealsWeaknessFor: [],
-    },
+    { id: 'warrens', title: 'The Warrens', category: 'Magic',
+      summary: 'Magic is drawn through warrens — accessible realms, each with its own aspect: fire, ice, dark, light, death, shadow, and more. A mage opens a warren and channels its power. Because warrens have natures, they also have opposites: the right aspect against the wrong foe is decisive, and the wrong one can be worse than nothing.',
+      citation: 'Malazan Book of the Fallen — Gardens of the Moon, and throughout', revealsWeaknessFor: [] },
+
+    { id: 'soletaken_divers', title: 'Soletaken & D’ivers', category: 'Shapeshifters',
+      summary: 'A shapeshifting curse of two kinds. Soletaken take a single other form — often a great beast, sometimes a dragon. D’ivers instead become many bodies sharing one mind, from a wolf-pack to a swarm of vermin. It matters in a fight: a Soletaken is one powerful body, while a D’ivers cannot be beaten by killing any single form — only by something that reaches all of it at once, or by not fighting it at all.',
+      citation: 'Malazan Book of the Fallen — Deadhouse Gates (the Path of Hands)', revealsWeaknessFor: ['gryllen', 'rake'] },
+
+    { id: 'path_of_hands', title: 'The Path of Hands', category: 'Powers',
+      summary: 'A convergence that calls to Soletaken and D’ivers alike — a gathering drawn toward a gate that promises ascendancy. Those who walk it are single-minded, following the strongest trail of power. A clever traveller can turn that hunger against them: offer such a creature a greater scent to chase, and be elsewhere when it turns.',
+      citation: 'Malazan Book of the Fallen — Deadhouse Gates', revealsWeaknessFor: ['gryllen'] },
+
+    { id: 'tlan_imass', title: 'The T’lan Imass', category: 'Elder Races',
+      summary: 'An ancient people who bound themselves to undeath through the Ritual of Tellann to wage an endless war — bodies of dried sinew and bone that no longer live and so cannot truly be killed. Sorcery is largely wasted on them. What ends a T’lan Imass is force enough to shatter its frame past reassembly, or dead ore that unmakes the ritual holding it together.',
+      citation: 'Malazan Book of the Fallen — Gardens of the Moon onward', revealsWeaknessFor: ['tool'] },
+
+    { id: 'tool_lore', title: 'Onos T’oolan', category: 'Characters',
+      summary: 'Called “Tool” by those who travel with him: a T’lan Imass, once the First Sword of his kind — the greatest warrior of an undead host. Unlike the mindless dead, he keeps his honour and a deep, weary sorrow at a war without end. He does not strike without cause. Named as no enemy of the Imass, and shown the right respect, he may let a traveller pass — and even offer a warning.',
+      citation: 'Malazan Book of the Fallen — Gardens of the Moon', revealsWeaknessFor: ['tool'] },
+
+    { id: 'anomander_rake', title: 'Anomander Rake', category: 'Characters',
+      summary: 'The Son of Darkness — Lord of the Tiste Andii who dwell within the floating fortress of Moon’s Spawn. He is Soletaken, and the form he takes is a vast black dragon. His warren is Kurald Galain, the elder realm of Darkness, and at his hip hangs Dragnipur, a sword that chains the souls it slays to an endless march. He is among the oldest and most powerful beings still walking, weary with the weight of his own choices. He is not a foe a mortal defeats. The wise do not draw a blade before him; they show respect and hope he has no quarrel with them.',
+      citation: 'Malazan Book of the Fallen — Gardens of the Moon', revealsWeaknessFor: ['rake'] },
+
+    { id: 'kurald_galain', title: 'Kurald Galain', category: 'Magic',
+      summary: 'The elder warren of Darkness — oldest of the Tiste aspects and the birthright of the Tiste Andii. It is not a fire or an ice you can answer in kind; it is the dark that was before light. Against a true master of Kurald Galain, mortal sorcery is a candle raised against the night.',
+      citation: 'Malazan Book of the Fallen — the Tiste Andii', revealsWeaknessFor: ['rake'] },
+
+    { id: 'dragnipur', title: 'Dragnipur', category: 'Powers',
+      summary: 'The black-bladed sword carried by Anomander Rake. Those it slays are not merely killed: their souls are bound to haul a vast wagon through a realm of encroaching Chaos, without rest or end. To face its wielder and imagine victory is to misunderstand the danger entirely.',
+      citation: 'Malazan Book of the Fallen — Gardens of the Moon onward', revealsWeaknessFor: ['rake'] },
+
+    { id: 'kruppe', title: 'Kruppe', category: 'Characters',
+      summary: 'A stout, self-delighting fixture of the great city of Darujhistan, forever narrating his own life as a tale in which he is the hero. He dresses cunning as foolishness and schemes as flattery; beneath the crumbs and grand words is a mind touched by luck and by dreams, and a friend worth far more than he appears. He does not fight. He talks — and it is usually wiser to listen.',
+      citation: 'Malazan Book of the Fallen — Gardens of the Moon', revealsWeaknessFor: ['kruppe'] },
+
+    { id: 'tellann', title: 'Tellann — the Fire Warren', category: 'Magic',
+      summary: 'The fire-aspected warren bound up with the T’lan Imass and their ritual. As a weapon it excels where a whole mass must be burned at once — the one sure answer to a swarm — but against a foe whose nature is fire, or one that already survived the ritual’s flames, it is the wrong tool.',
+      citation: 'Malazan Book of the Fallen — associated with the T’lan Imass', revealsWeaknessFor: ['gryllen'] },
+
+    { id: 'omtose', title: 'Omtose Phellack — the Ice Warren', category: 'Magic',
+      summary: 'The elder warren of the Jaghut: cold, stillness, and the weight of ages. Ice against fire is the oldest opposition there is — though not every foe is a creature of flame, and against the truly ancient it may be no answer at all.',
+      citation: 'Malazan Book of the Fallen — the Jaghut and Omtose Phellack', revealsWeaknessFor: [] },
+
+    { id: 'otataral', title: 'Otataral', category: 'Anti-Magic',
+      summary: 'A reddish dead ore that negates sorcery. Near it, warrens close and magic simply stops. It can strip a mage of power or unmake a ritual of undeath — but it does not discriminate. Otataral smothers your magic as surely as your enemy’s, and against a foe of pure elder power it is a thin comfort.',
+      citation: 'Malazan Book of the Fallen — Deadhouse Gates (the otataral mines)', revealsWeaknessFor: ['tool'] },
+
+    { id: 'ascendants', title: 'Ascendants & Gods', category: 'Powers',
+      summary: 'Beings who have risen to great power; some become gods, bound to an aspect or a role they can never fully set aside. You do not defeat such things by matching strength. You survive them by understanding what they are — and sometimes the wisest use of that understanding is to recognize a fight you must never begin.',
+      citation: 'Malazan Book of the Fallen — a central theme across the series', revealsWeaknessFor: ['rake'] },
   ],
 
-  // ---- Scenario: a small region to explore ------------------------------
+  // ---- Scenario ---------------------------------------------------------
   scenario: {
     id: 'scenario1',
     title: 'The Barrows of Morn',
     startNode: 'camp',
-    winNode: 'shore',        // defeating the dragon here wins the slice
+    winNode: 'shore',
     nodes: {
-      camp:  { id: 'camp',  name: 'A Cold Camp', desc: 'A dead fire and old stones. Safe, for now. The land opens north to a ridge, east to the barrows, and down a long slope to the shore.', exits: { ridge: 'ridge', barrows: 'barrows', shore: 'shore' } },
-      ridge: { id: 'ridge', name: 'The Wind-Scoured Ridge', desc: 'Bare rock and a sound like water where there is no water.', exits: { back: 'camp' }, enemy: 'swarm' },
-      barrows:{ id: 'barrows', name: 'The Barrows', desc: 'Grass-covered mounds. One has been open a very long time.', exits: { back: 'camp' }, enemy: 'imass' },
-      shore: { id: 'shore', name: 'The Grey Shore', desc: 'Black sand and a robed figure waiting at the waterline, patient as stone.', exits: { back: 'camp' }, enemy: 'dragon' },
+      camp:      { id: 'camp',      name: 'A Cold Camp', desc: 'A dead fire and old stones. Safe, for now. A crossroads lies west, a wind-scoured ridge north, the barrows east, and a long slope down to the grey shore.', exits: { crossroads: 'crossroads', ridge: 'ridge', barrows: 'barrows', shore: 'shore' } },
+      crossroads:{ id: 'crossroads',name: 'The Crossroads', desc: 'Four worn roads meet under a leaning signpost whose words have long weathered away.', exits: { back: 'camp' }, enemy: 'kruppe' },
+      ridge:     { id: 'ridge',     name: 'The Wind-Scoured Ridge', desc: 'Bare rock and a sound like water where there is no water.', exits: { back: 'camp' }, enemy: 'gryllen' },
+      barrows:   { id: 'barrows',   name: 'The Barrows', desc: 'Grass-covered mounds. One has been open a very long time.', exits: { back: 'camp' }, enemy: 'tool' },
+      shore:     { id: 'shore',     name: 'The Grey Shore', desc: 'Black sand and a robed figure waiting at the waterline, patient as stone.', exits: { back: 'camp' }, enemy: 'rake' },
     },
   },
 };
