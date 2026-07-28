@@ -63,3 +63,53 @@ Or use the `/serve` command. To verify a change actually plays, use the `playtes
 - 2-space indent, semicolons, single quotes in JS.
 - Escape all user/content strings before inserting into HTML (`esc()` in `app.js`).
 - Default branch is `main`. Commit messages are terse and imperative.
+
+## Branch strategy
+
+Single source of truth for branching — agents and skills reference this section instead of
+restating it.
+
+- **`main` is protected** (enforced on GitHub, admins included): no direct pushes, no force
+  pushes, no deletion. Everything lands via PR — including docs and scaffolding.
+- **Naming:** `feature/<slug>` for features, `fix/<slug>` for bug fixes, `chore/<slug>` for
+  docs/scaffolding/tooling. Living World plan phases use `feature/p<N>-<slug>`
+  (e.g. `feature/p1-lore-db`).
+- **Base:** every branch starts from latest `origin/main` (`git fetch origin` first; note
+  the base SHA). One branch = one work order = one PR = one agent — no drive-by changes.
+- **Merge method: squash** (`gh pr merge --squash --delete-branch`). One unit of work = one
+  clean commit on `main`; review-fix commits are noise history doesn't need.
+- **Landing order:** dependency order first, then smallest/least-risky first. After each
+  merge, any open branch that now conflicts rebases: `git fetch origin && git rebase
+  origin/main`, then `git push --force-with-lease` (feature branches only — never `main`).
+- **Dependent work:** if B needs unmerged A, prefer sequencing B after A lands. If B must
+  start early, stack it on A's branch, mark the PR "depends on #A", and rebase onto `main`
+  when A merges.
+- **Cleanup:** remote branch deleted at merge; worktrees removed when their agent finishes.
+
+## Development pipeline (PM → UX → Architect → Junior engineers → Review)
+
+An engineering team working in tandem, not a strict waterfall — PM, UX, and Architect
+iterate together before build; UX and Review gate together after.
+
+1. **Product Manager** — the `product-manager` skill (`/pm`). Interviews the user, turns
+   answers into numbered user stories with requirements and Given/When/Then acceptance
+   criteria in `docs/stories/`. Stories define *what* and *why*; never technical design.
+2. **UX Designer** — the `ux-designer` skill (`/ux`). Takes stories with player-facing
+   surface and produces UX specs in `docs/ux/`: flows, screen states, wireframes/mockups,
+   interaction and error states, mobile-first + accessibility notes. Reviews the *built*
+   UI against the spec before merge. Collaborates with the PM (stories may change once
+   flows are drawn) and flags feasibility questions to the Architect.
+3. **Architect** — the **main session** running the `orchestrate` skill. The experienced
+   solution designer: writes the technical design brief, decomposes stories + UX specs
+   into **work orders** (spec, interfaces, acceptance criteria, UX spec references,
+   expected files), and owns all architectural decisions.
+4. **Junior engineers** — `feature-dev` agents, one per work order, in isolated worktrees
+   on their own branches. They implement exactly what the work order says, and **ask the
+   architect instead of guessing** when a spec is ambiguous or looks wrong. No unilateral
+   architecture decisions.
+5. **Review** — a `pr-reviewer` agent per PR ranks findings **Critical / High / Medium /
+   Low / Nit** and checks the diff against the work order's acceptance criteria, the
+   design brief, and (for UI work) the UX spec. The architect then does a final
+   design-conformance pass, and UI changes get a UX conformance pass, before merging.
+   Merge gate: zero Critical/High. Unfixed Mediums become recorded follow-ups, never
+   silently dropped.
