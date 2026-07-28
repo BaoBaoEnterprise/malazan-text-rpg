@@ -2,3 +2,6 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Claude Code personal overrides
+.claude/settings.local.json
