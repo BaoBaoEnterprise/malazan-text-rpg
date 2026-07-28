@@ -1,0 +1,84 @@
+/* Mobile-first dark theme. Designed for iPhone Safari, full-screen when installed. */
+:root {
+  --bg: #0e0f13;
+  --panel: #171922;
+  --panel-2: #1f2230;
+  --ink: #e7e3d8;
+  --muted: #9aa0ad;
+  --accent: #c9a24b;      /* worn gold */
+  --danger: #b5483d;
+  --ok: #6fae6a;
+  --line: #2a2e3c;
+  --radius: 12px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5; -webkit-text-size-adjust: 100%; }
+#app { max-width: 720px; margin: 0 auto;
+  padding: max(env(safe-area-inset-top), 16px) 16px calc(env(safe-area-inset-bottom) + 24px); }
+
+.screen { animation: fade .25s ease; }
+@keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+
+h1 { font-size: 1.9rem; margin: .3em 0; letter-spacing: .5px; }
+h2 { font-size: 1.35rem; margin: .2em 0 .5em; }
+h3 { font-size: .85rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted); margin: 1.4em 0 .5em; }
+.sub { color: var(--muted); margin-top: 0; }
+.prose { color: var(--ink); }
+.muted { color: var(--muted); }
+.cite { color: var(--accent); font-size: .82rem; font-style: italic; }
+ul { padding-left: 1.2em; } li { margin: .35em 0; }
+
+.title { text-align: center; padding-top: 12vh; }
+.title h1 { font-size: 2.3rem; }
+
+/* buttons */
+.menu { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+.menu.row { flex-direction: row; flex-wrap: wrap; }
+.menu.row button { flex: 1 1 30%; }
+button {
+  font: inherit; color: var(--ink); background: var(--panel-2);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px 16px; text-align: left; cursor: pointer;
+  transition: transform .05s ease, border-color .15s ease, background .15s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+button:hover { border-color: var(--accent); }
+button:active { transform: scale(.98); }
+button:disabled { opacity: .4; cursor: default; }
+button.primary { background: var(--accent); color: #14140e; border-color: var(--accent); font-weight: 600; }
+button.danger { border-color: var(--danger); }
+.hint { color: var(--muted); font-size: .8rem; }
+
+/* topbar + hp */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding-bottom: 12px; border-bottom: 1px solid var(--line); margin-bottom: 12px; }
+.topbar h2 { margin: 0; }
+.tools { display: flex; gap: 8px; }
+.tools button { padding: 8px 12px; font-size: .85rem; }
+.hp { display: flex; align-items: center; gap: 6px; }
+.pip { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--danger); display: inline-block; }
+.pip.on { background: var(--danger); }
+.ota { color: var(--accent); font-size: .8rem; margin-left: 8px; }
+
+/* encounter log */
+.log { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 4px 14px; margin: 10px 0; }
+.log p { margin: 10px 0; }
+.foe .tag { font-size: .8rem; }
+.tag { display: inline-block; background: var(--panel-2); border: 1px solid var(--line);
+  color: var(--muted); border-radius: 999px; padding: 1px 10px; font-size: .72rem;
+  vertical-align: middle; letter-spacing: .5px; }
+.ok { color: var(--ok); font-size: .8rem; }
+
+/* codex */
+.codex .search { width: 100%; padding: 12px 14px; margin: 6px 0 8px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
+  color: var(--ink); font: inherit; }
+.entries details { background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: 4px 14px; margin: 8px 0; }
+.entries summary { cursor: pointer; padding: 10px 0; font-weight: 600; }
+.entries summary::-webkit-details-marker { color: var(--accent); }
+.best { display: flex; flex-direction: column; gap: 8px; }
+.bcard { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
