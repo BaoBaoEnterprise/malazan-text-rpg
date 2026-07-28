@@ -118,6 +118,49 @@ const GAME_DATA = {
     },
   },
 
+  // ---- Character dossiers ----------------------------------------------
+  // Shown in the "tap the name" modal. `appearance` is always visible (you can
+  // see them); each entry unlocks with what you've done: observe / probe /
+  // study. Deliberately includes flavour and looks, not just the solve.
+  dossiers: {
+    gryllen: {
+      appearance: 'A living carpet of brown-and-grey rats, thousands strong, flowing over the stone as one restless mass. Countless small red eyes catch the light. Where it has passed, nothing living remains — only bare, gleaming bone.',
+      entries: [
+        { gate: 'always',  label: 'Bearing',        text: 'It moves with a single will, surging and recoiling as though one beast wore a thousand skins at once.' },
+        { gate: 'observe', label: 'In the fighting', text: 'Strike any single body and the rest simply flow around the gap. There is nothing here that dying makes smaller.' },
+        { gate: 'probe',   label: 'What drives it',  text: 'It strains constantly toward the horizon — toward greater scents of power on the wind. Your presence barely holds its hunger in place.' },
+        { gate: 'study',   label: 'What it is',      text: 'A D’ivers: one soul cursed across many bodies, walking the Path of Hands toward a promised ascendancy. They call it the Tide of Madness, and the name is a kindness.' },
+      ],
+    },
+    tool: {
+      appearance: 'A gaunt figure taller than a man, dried and leathered flesh stretched over ancient bone. It carries a two-handed sword of chipped flint. Its eyes are two cold points of light in a face that has not been alive since before the memory of the world.',
+      entries: [
+        { gate: 'always',  label: 'Bearing',        text: 'It stands utterly still — no breath, no shifting of weight, none of the small movements of the living. Patience without any end.' },
+        { gate: 'observe', label: 'In the fighting', text: 'Sorcery breaks over it and leaves nothing behind. Yet the ancient frame is brittle; whatever is shattered from it does not mend.' },
+        { gate: 'probe',   label: 'Its temper',      text: 'It does not attack. It weighs you — enemy, or merely a fool who wandered too near. There is judgement in the stillness, and something that might be weariness.' },
+        { gate: 'study',   label: 'Who it is',       text: 'Onos T’oolan, once First Sword of the T’lan Imass — the finest warrior of an undead host bound by the Ritual of Tellann. Unlike his mindless kin, he has kept his honour, and a sorrow as old as his war.' },
+      ],
+    },
+    rake: {
+      appearance: 'A tall figure in dark robes, silver hair spilling to his waist, skin the black of deep shadow. His eyes shift like a storm at dusk — grey, then amber, then some colour with no name. At his hip hangs a plain black sword that seems to drink the daylight from around it.',
+      entries: [
+        { gate: 'always',  label: 'Bearing',    text: 'He is entirely unhurried. No aggression in him, and no fear — only the quiet, immovable certainty of something very old and very tired.' },
+        { gate: 'observe', label: 'The danger', text: 'He has not reached for the sword. He does not need to. Every instinct you own reads him as death, waiting only upon your own foolishness.' },
+        { gate: 'probe',   label: 'The shadows', text: 'The darkness at his feet moves with a life of its own, coiling and uncoiling. When you step nearer it rises — a warning, not yet a blow.' },
+        { gate: 'study',   label: 'Who he is',   text: 'Anomander Rake — Son of Darkness, Lord of the Tiste Andii of Moon’s Spawn, a Soletaken whose other shape is a vast black dragon. The sword is Dragnipur, and those it slays are chained to haul a wagon through endless Chaos. He is not defeated. He is survived.' },
+      ],
+    },
+    kruppe: {
+      appearance: 'A short, round man in a food-stained waistcoat, fingers glittering with rings, a sheen of pastry grease at one corner of his mouth. He beams at you as though you were the dearest of his many old friends.',
+      entries: [
+        { gate: 'always',  label: 'Bearing',      text: 'He talks without pause and mostly of himself — in the third person, as the hero of a grand tale only he seems able to see.' },
+        { gate: 'observe', label: 'Beneath it',   text: 'For all the babble, his small dark eyes are quick, and they miss nothing at all.' },
+        { gate: 'probe',   label: 'The evasions', text: 'Press him with a question and the words only multiply, folding around it like custard around a spoon. There is a keen cunning under the foolery.' },
+        { gate: 'study',   label: 'Who he is',    text: 'Kruppe of Darujhistan — fence, dreamer, and self-declared genius, touched by luck and by stranger powers than he will admit. He does not fight. He has never needed to.' },
+      ],
+    },
+  },
+
   // ---- Codex / glossary -------------------------------------------------
   codex: [
     { id: 'warrens', title: 'The Warrens', category: 'Magic',

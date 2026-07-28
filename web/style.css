@@ -82,3 +82,39 @@ button.danger { border-color: var(--danger); }
 .entries summary::-webkit-details-marker { color: var(--accent); }
 .best { display: flex; flex-direction: column; gap: 8px; }
 .bcard { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 14px; }
+
+/* clickable character name */
+.namebtn { background: none; border: none; padding: 0; margin: 0; font: inherit;
+  color: inherit; text-align: left; cursor: pointer; }
+.foe .namebtn { border-bottom: 1px dashed var(--accent); }
+.namebtn:hover { border-color: var(--accent); }
+.namebtn .info { color: var(--accent); font-size: .8em; vertical-align: super; }
+.bcard .namebtn b { color: var(--ink); }
+
+/* dossier modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(6,7,10,.72);
+  display: flex; align-items: flex-end; justify-content: center; z-index: 50;
+  padding: 0; animation: fade .18s ease; }
+.modal { background: var(--panel); border: 1px solid var(--line);
+  border-radius: 18px 18px 0 0; width: 100%; max-width: 720px;
+  max-height: 85vh; overflow-y: auto;
+  padding: 22px 20px calc(env(safe-area-inset-bottom) + 24px);
+  box-shadow: 0 -12px 40px rgba(0,0,0,.5); position: relative;
+  animation: slideup .22s ease; }
+@keyframes slideup { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+@media (min-width: 560px) {
+  .modal-overlay { align-items: center; padding: 20px; }
+  .modal { border-radius: 18px; }
+}
+.mclose { position: absolute; top: 12px; right: 12px; width: 38px; height: 38px;
+  border-radius: 50%; padding: 0; text-align: center; line-height: 1; font-size: 1rem;
+  background: var(--panel-2); }
+.mname { margin: 0 40px .1em 0; font-size: 1.5rem; }
+.mappear { color: var(--ink); margin: 14px 0 4px; }
+.drows { display: flex; flex-direction: column; gap: 2px; margin-top: 10px;
+  border-top: 1px solid var(--line); }
+.drow { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.dlabel { font-size: .72rem; text-transform: uppercase; letter-spacing: 1.2px;
+  color: var(--accent); margin-bottom: 3px; }
+.drow.locked .dlabel { color: var(--muted); }
+.dtext { color: var(--ink); }

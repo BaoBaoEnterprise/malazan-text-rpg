@@ -105,7 +105,7 @@
     h(`
       <div class="screen">
         <div class="topbar">${hpBar()}<div class="tools"><button data-a="codex">Codex</button></div></div>
-        <h2 class="foe">${esc(foe.name)} <span class="tag">${esc(foe.title)}</span></h2>
+        <h2 class="foe"><button class="namebtn" data-dossier>${esc(foe.name)} <span class="info" aria-hidden="true">ⓘ</span></button> <span class="tag">${esc(foe.title)}</span></h2>
         <div class="log">${enc.log.map(l => `<p>${esc(l)}</p>`).join('')}</div>
 
         <h3>Read</h3>
@@ -126,6 +126,7 @@
         </div>
         <div class="menu"><button data-a="flee">Break away</button></div>
       </div>`);
+    on('[data-dossier]', 'click', () => openDossier(enc.enemyId));
     on('[data-read]', 'click', (e) => { Engine.read(state, e.target.closest('[data-read]').dataset.read); save(); route(); });
     on('[data-interact]', 'click', (e) => { Engine.interact(state, e.target.closest('[data-interact]').dataset.interact); save(); route(); });
     on('[data-act]',  'click', (e) => { Engine.act(state, e.target.dataset.act); save(); route(); });
@@ -179,7 +180,7 @@
         ${bestiary.length ? `<h3>Bestiary</h3><div class="best">${bestiary.map(([id, b]) => {
             const f = GAME_DATA.enemies[id]; if (!f) return '';
             const badge = b.defeated ? '<span class="ok">✔ defeated</span>' : (b.resolved ? '<span class="ok">✔ passed peacefully</span>' : '');
-            return `<div class="bcard"><b>${esc(f.name)}</b> <span class="tag">${esc(f.title)}</span> ${badge}${b.weaknessKnown ? '<div class="muted">You understand what it is.</div>' : ''}</div>`;
+            return `<div class="bcard"><button class="namebtn" data-bdossier="${id}"><b>${esc(f.name)}</b> <span class="info" aria-hidden="true">ⓘ</span></button> <span class="tag">${esc(f.title)}</span> ${badge}${b.weaknessKnown ? '<div class="muted">You understand what it is.</div>' : ''}</div>`;
           }).join('')}</div>` : ``}
         <h3>Entries</h3>
         <div class="entries">
@@ -193,12 +194,62 @@
       </div>`);
     const back = () => (from === 'title' || from === 'victory') ? title() : route();
     on('[data-a="back"]', 'click', back);
+    on('[data-bdossier]', 'click', (e) => openDossier(e.target.closest('[data-bdossier]').dataset.bdossier));
     el.querySelector('#q').addEventListener('input', (e) => codex(from, e.target.value));
     on('details', 'toggle', (e) => {
       if (!state || !e.target.open) return;
       const cid = e.target.dataset.cid;
       if (!state.studied[cid]) { Engine.readCodex(state, cid); save(); }
     });
+  }
+
+  // ---- Character dossier modal -----------------------------------------
+  // What the player could plausibly know right now about a given being.
+  function knownState(enemyId) {
+    const enc = (state && state.encounter && state.encounter.enemyId === enemyId) ? state.encounter : null;
+    const b = state && state.bestiary[enemyId];
+    const full = !!(b && (b.defeated || b.resolved));   // resolving teaches you everything
+    return {
+      observe: full || !!(enc && enc.reads.observe),
+      probe:   full || !!(enc && enc.reads.probe),
+      study:   full || (state && Engine.hasStudiedFoe(state, enemyId)) || !!(enc && enc.reads.recall),
+    };
+  }
+
+  const GATE_HINT = {
+    observe: 'Observe it to learn more.',
+    probe:   'Probe it to learn more.',
+    study:   'Study it in the Codex to learn more.',
+  };
+
+  function openDossier(enemyId) {
+    const foe = GAME_DATA.enemies[enemyId];
+    const d = GAME_DATA.dossiers[enemyId];
+    if (!foe || !d) return;
+    const k = knownState(enemyId);
+    const rows = (d.entries || []).map(e => {
+      const shown = e.gate === 'always' || k[e.gate];
+      return shown
+        ? `<div class="drow"><div class="dlabel">${esc(e.label)}</div><div class="dtext">${esc(e.text)}</div></div>`
+        : `<div class="drow locked"><div class="dlabel">${esc(e.label)}</div><div class="dtext muted">${esc(GATE_HINT[e.gate] || 'Not yet known.')}</div></div>`;
+    }).join('');
+
+    const overlay = document.createElement('div');
+    overlay.className = 'modal-overlay';
+    overlay.innerHTML = `
+      <div class="modal" role="dialog" aria-modal="true" aria-label="${esc(foe.name)}">
+        <button class="mclose" aria-label="Close">✕</button>
+        <h2 class="mname">${esc(foe.name)}</h2>
+        <div class="tag">${esc(foe.title)}</div>
+        <p class="mappear">${esc(d.appearance)}</p>
+        <div class="drows">${rows}</div>
+      </div>`;
+    const close = () => { overlay.remove(); document.removeEventListener('keydown', onKey); };
+    const onKey = (e) => { if (e.key === 'Escape') close(); };
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) close(); });
+    overlay.querySelector('.mclose').addEventListener('click', close);
+    document.addEventListener('keydown', onKey);
+    document.body.appendChild(overlay);
   }
 
   // ---- boot -------------------------------------------------------------
