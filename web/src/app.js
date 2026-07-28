@@ -1,8 +1,8 @@
 /*
- * app.js — the UI layer. Renders screens, wires buttons, owns save/load.
+ * app.js — UI layer. Linear scene runner, turn-based encounters, save/load.
  */
 (() => {
-  const SAVE_KEY = 'morn_save_v2';
+  const SAVE_KEY = 'morn_save_v3';
   const el = document.getElementById('app');
   let state = null;
 
@@ -11,10 +11,9 @@
   function load()  { try { return JSON.parse(localStorage.getItem(SAVE_KEY)); } catch (e) { return null; } }
   function hasSave(){ return !!localStorage.getItem(SAVE_KEY); }
 
-  // ---- render helpers ---------------------------------------------------
+  // ---- helpers ----------------------------------------------------------
   const h = (html) => { el.innerHTML = html; };
   const esc = (s) => String(s).replace(/[&<>]/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;' }[c]));
-  const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
   function on(sel, evt, fn) { el.querySelectorAll(sel).forEach(n => n.addEventListener(evt, fn)); }
 
   function hpBar() {
@@ -23,7 +22,7 @@
     return `<div class="hp" title="Vitality">${pips}<span class="ota">◈ otataral: ${state.otataralUses}</span></div>`;
   }
 
-  // ---- screens ----------------------------------------------------------
+  // ---- title / help -----------------------------------------------------
   function title() {
     h(`
       <div class="screen title">
@@ -31,13 +30,13 @@
         <p class="sub">A Malazan text RPG — win by wit, not by numbers.</p>
         <div class="menu">
           ${hasSave() ? `<button data-a="continue" class="primary">Continue</button>` : ``}
-          <button data-a="new" class="${hasSave() ? '' : 'primary'}">New Game</button>
+          <button data-a="new" class="${hasSave() ? '' : 'primary'}">New Journey</button>
           <button data-a="codex">Codex</button>
           <button data-a="how">How to Play</button>
         </div>
       </div>`);
     on('[data-a="continue"]', 'click', () => { state = load(); route(); });
-    on('[data-a="new"]', 'click', () => { if (!hasSave() || confirm('Start a new game? Your current save will be replaced.')) { state = Engine.newGame(); save(); route(); } });
+    on('[data-a="new"]', 'click', () => { if (!hasSave() || confirm('Begin a new journey? Your current save and Codex will be wiped.')) { state = Engine.newGame(); save(); route(); } });
     on('[data-a="codex"]', 'click', () => codex('title'));
     on('[data-a="how"]', 'click', howto);
   }
@@ -47,14 +46,14 @@
       <div class="screen">
         <h2>How to Play</h2>
         <div class="prose">
-          <p>You are no one special in a world of dragons, undead, and ancient powers. You will not out-fight these things. You survive by <b>understanding</b> them — and knowing when <i>not</i> to draw your blade.</p>
+          <p>You are no one special in a world of dragons, undead, and ancient powers. You will not out-fight these things. You survive by <b>paying attention</b>.</p>
           <ul>
-            <li><b>Explore</b> the region and meet what waits there.</li>
-            <li>In an encounter, <b>Read</b> the foe — Observe, Probe (it can cost you), and Recall Lore.</li>
-            <li><b>Recall Lore</b> only works once you’ve <b>studied</b> that being in the <b>Codex</b>. Research is a weapon.</li>
-            <li>Every encounter offers more than a fight. <b>Speak, withdraw, bargain, or misdirect</b> — often the clever path is not violence at all.</li>
-            <li><b>Act</b> in combat with the right approach: the correct counter wins; the wrong one can get you killed. Some foes must <i>never</i> be fought.</li>
-            <li>Everyone you come to understand is recorded in your <b>Bestiary</b>.</li>
+            <li>The road runs <b>one way</b>, through one encounter after another. Between them you rest and heal.</li>
+            <li>Each encounter is <b>turn based</b>. Every action — a look, a word, a blow — takes a turn.</li>
+            <li>Your <b>Codex begins empty</b>. Each time you <b>Read</b> a foe (Observe, Probe, Recall), you learn something and it is written in. That knowledge <b>carries forward</b> — what you learn from one being may already tell you what the next one is.</li>
+            <li>Encounters are more than fights. <b>Speak, withdraw, bargain, or misdirect</b> — often the clever path is not violence at all. The right non-combat choice may need something you’ve learned.</li>
+            <li>In combat, the correct counter wins; the wrong one can get you killed. Some foes must <i>never</i> be fought.</li>
+            <li>Tap any character’s <b>name</b> to see what you’ve worked out about them so far.</li>
           </ul>
         </div>
         <div class="menu"><button data-a="back">Back</button></div>
@@ -62,57 +61,62 @@
     on('[data-a="back"]', 'click', title);
   }
 
+  // ---- router -----------------------------------------------------------
   function route() {
     if (!state) return title();
-    if (state.encounter && state.encounter.over) return encounterEnd();
     if (state.dead) return gameover();
-    if (state.won)  return victory();
+    if (state.encounter && state.encounter.over) return encounterEnd();
     if (state.encounter) return encounter();
-    return explore();
+    return renderScene();
   }
 
-  function explore() {
-    const node = GAME_DATA.scenario.nodes[state.node];
-    const exits = Object.entries(node.exits)
-      .map(([label, to]) => `<button data-go="${to}">${esc(cap(label))} → ${esc(GAME_DATA.scenario.nodes[to].name)}</button>`)
-      .join('');
-    const foe = node.enemy ? GAME_DATA.enemies[node.enemy] : null;
+  function renderScene() {
+    const scenes = GAME_DATA.scenario.scenes;
+    if (state.scene >= scenes.length) return victory();
+    const sc = scenes[state.scene];
+    if (sc.type === 'narration') return narration(sc);
+    if (sc.type === 'encounter') {
+      if (!state.encounter) { Engine.startEncounter(state, sc.enemy); save(); }
+      return encounter();
+    }
+  }
+
+  function narration(sc) {
+    if (state.hp < state.maxHp) { state.hp = state.maxHp; save(); }  // rest & heal on the road
     h(`
       <div class="screen">
         <div class="topbar">${hpBar()}<div class="tools"><button data-a="codex">Codex</button><button data-a="menu">Menu</button></div></div>
-        <h2>${esc(node.name)}</h2>
-        <p class="prose">${esc(node.desc)}</p>
-        ${foe && !state.cleared[node.id] ? `<button class="primary" data-a="fight">${esc(node.encounterLabel || 'Something is here.')} Approach.</button>` : ``}
-        ${foe && state.cleared[node.id] ? `<p class="muted">The way here is clear now.</p>` : ``}
-        <div class="menu">${exits}</div>
+        <h2>${esc(sc.title || '')}</h2>
+        <p class="prose">${esc(sc.text)}</p>
+        <div class="menu"><button class="primary" data-a="go">Go on</button></div>
       </div>`);
-    on('[data-go]', 'click', (e) => { Engine.move(state, e.target.dataset.go); save(); route(); });
-    on('[data-a="fight"]', 'click', () => { Engine.startEncounter(state, node.enemy); save(); route(); });
-    on('[data-a="codex"]', 'click', () => codex('explore'));
+    on('[data-a="go"]', 'click', () => { state.scene++; save(); route(); });
+    on('[data-a="codex"]', 'click', () => codex('scene'));
     on('[data-a="menu"]', 'click', title);
   }
 
+  // ---- encounter (turn based) ------------------------------------------
   function encounter() {
     const enc = state.encounter;
     const foe = GAME_DATA.enemies[enc.enemyId];
-    const studied = Engine.hasStudiedFoe(state, enc.enemyId);
     const app = GAME_DATA.approaches;
+    const canRecall = enc.reads.observe || enc.reads.probe || enc.knownAtStart;
 
     const interactions = (foe.interactions || []).map(it =>
-      `<button data-interact="${it.id}">${esc(it.label)}${it.needsStudy && !studied ? ' <span class="hint">(uncertain)</span>' : ''}</button>`
+      `<button data-interact="${it.id}">${esc(it.label)}${it.needs && !state.studied[it.needs] ? ' <span class="hint">(uncertain)</span>' : ''}</button>`
     ).join('');
 
     h(`
       <div class="screen">
-        <div class="topbar">${hpBar()}<div class="tools"><button data-a="codex">Codex</button></div></div>
+        <div class="topbar">${hpBar()}<div class="tools"><span class="turn">Turn ${enc.turn}</span><button data-a="codex">Codex</button></div></div>
         <h2 class="foe"><button class="namebtn" data-dossier>${esc(foe.name)} <span class="info" aria-hidden="true">ⓘ</span></button> <span class="tag">${esc(foe.title)}</span></h2>
         <div class="log">${enc.log.map(l => `<p>${esc(l)}</p>`).join('')}</div>
 
-        <h3>Read</h3>
+        <h3>Read — learn what it is</h3>
         <div class="menu row">
           <button data-read="observe" ${enc.reads.observe ? 'disabled' : ''}>Observe</button>
           <button data-read="probe" ${enc.reads.probe ? 'disabled' : ''}>Probe${foe.noFight ? '' : ' <span class="hint">(risky)</span>'}</button>
-          <button data-read="recall" ${enc.reads.recall ? 'disabled' : ''} title="${studied ? '' : 'Study it in the Codex first'}">Recall Lore ${studied ? '' : '🔒'}</button>
+          <button data-read="recall" ${enc.reads.recall ? 'disabled' : ''}>Recall Lore${canRecall ? '' : ' <span class="hint">(look first)</span>'}</button>
         </div>
 
         ${interactions ? `<h3>Speak &amp; other paths</h3><div class="menu">${interactions}</div>` : ``}
@@ -124,34 +128,32 @@
           <button data-act="omtose">${esc(app.omtose.name)}</button>
           <button data-act="otataral" ${state.otataralUses <= 0 ? 'disabled' : ''}>${esc(app.otataral.name)} (${state.otataralUses})</button>
         </div>
-        <div class="menu"><button data-a="flee">Break away</button></div>
       </div>`);
     on('[data-dossier]', 'click', () => openDossier(enc.enemyId));
     on('[data-read]', 'click', (e) => { Engine.read(state, e.target.closest('[data-read]').dataset.read); save(); route(); });
     on('[data-interact]', 'click', (e) => { Engine.interact(state, e.target.closest('[data-interact]').dataset.interact); save(); route(); });
     on('[data-act]',  'click', (e) => { Engine.act(state, e.target.dataset.act); save(); route(); });
-    on('[data-a="flee"]', 'click', () => { Engine.flee(state); save(); route(); });
     on('[data-a="codex"]', 'click', () => codex('encounter'));
   }
 
   function encounterEnd() {
     const enc = state.encounter;
-    const cont = enc.fled ? 'Fall back' : (state.dead ? 'So it ends' : (state.won ? 'Walk on' : 'Continue'));
+    const cont = state.dead ? 'So it ends' : 'Go on';
     h(`
       <div class="screen">
-        <div class="topbar">${hpBar()}</div>
+        <div class="topbar">${hpBar()}<div class="tools"><span class="turn">Turn ${enc.turn}</span></div></div>
         <div class="log">${enc.log.map(l => `<p>${esc(l)}</p>`).join('')}</div>
         <div class="menu"><button class="primary" data-a="ok">${cont}</button></div>
       </div>`);
-    on('[data-a="ok"]', 'click', () => { Engine.move(state, enc.fled ? 'camp' : state.node); save(); route(); });
+    on('[data-a="ok"]', 'click', () => { state.encounter = null; state.scene++; save(); route(); });
   }
 
   function victory() {
     h(`<div class="screen title">
         <h1>The Shore Lets You Go</h1>
-        <p class="prose">You met the Son of Darkness on the grey shore and understood the one move that kept you alive: you did not raise your hand. Anomander Rake watched you leave, and the tide came in behind you.</p>
-        <p class="muted">You were never the strongest thing on this shore. You were only the one who understood it.</p>
-        <div class="menu"><button data-a="codex">Review your Bestiary</button><button data-a="menu">Title</button></div>
+        <p class="prose">You walked a road of dragons and the ancient dead, and you are still breathing — not because you were strong, but because you understood what you faced, and knew when not to raise your hand.</p>
+        <p class="muted">You were never the strongest thing on this road. You were only the one who paid attention.</p>
+        <div class="menu"><button data-a="codex">Review your Codex</button><button data-a="menu">Title</button></div>
       </div>`);
     on('[data-a="codex"]', 'click', () => codex('victory'));
     on('[data-a="menu"]', 'click', title);
@@ -160,66 +162,60 @@
   function gameover() {
     h(`<div class="screen title">
         <h1>You Fall</h1>
-        <p class="prose">The land keeps your name, and little else. Cleverness, not courage, was the thing you needed — and there is always more to learn in the Codex.</p>
-        <div class="menu"><button class="primary" data-a="retry">Try again</button><button data-a="menu">Title</button></div>
+        <p class="prose">The land keeps your name, and little else. But what you learned, you keep — begin again, and let it serve you.</p>
+        <div class="menu"><button class="primary" data-a="retry">Walk it again</button><button data-a="menu">Title</button></div>
       </div>`);
-    on('[data-a="retry"]', 'click', () => { state = Engine.newGame(); save(); route(); });
+    on('[data-a="retry"]', 'click', () => { state = Engine.retryKeepingLore(state); save(); route(); });
     on('[data-a="menu"]', 'click', title);
   }
 
-  // ---- Codex screen (search + read + bestiary) --------------------------
+  // ---- Codex (blank at start; grows as you learn) -----------------------
   function codex(from, filter) {
     filter = (filter || '').toLowerCase();
-    const entries = GAME_DATA.codex.filter(c =>
-      !filter || (c.title + ' ' + c.category + ' ' + c.summary).toLowerCase().includes(filter));
-    const bestiary = state ? Object.entries(state.bestiary) : [];
+    const known = GAME_DATA.codex.filter(c => state && state.studied[c.id]);
+    const entries = known.filter(c => !filter || (c.title + ' ' + c.category + ' ' + c.summary).toLowerCase().includes(filter));
+    const bestiary = state ? Object.entries(state.bestiary).filter(([id]) => GAME_DATA.enemies[id]) : [];
     h(`
       <div class="screen codex">
         <div class="topbar"><h2>Codex</h2><div class="tools"><button data-a="back">Back</button></div></div>
-        <input id="q" class="search" placeholder="Search the lore…" value="${esc(filter)}" />
+        ${known.length ? `<input id="q" class="search" placeholder="Search what you know…" value="${esc(filter)}" />` : ``}
         ${bestiary.length ? `<h3>Bestiary</h3><div class="best">${bestiary.map(([id, b]) => {
-            const f = GAME_DATA.enemies[id]; if (!f) return '';
-            const badge = b.defeated ? '<span class="ok">✔ defeated</span>' : (b.resolved ? '<span class="ok">✔ passed peacefully</span>' : '');
-            return `<div class="bcard"><button class="namebtn" data-bdossier="${id}"><b>${esc(f.name)}</b> <span class="info" aria-hidden="true">ⓘ</span></button> <span class="tag">${esc(f.title)}</span> ${badge}${b.weaknessKnown ? '<div class="muted">You understand what it is.</div>' : ''}</div>`;
+            const f = GAME_DATA.enemies[id];
+            const badge = b.defeated ? '<span class="ok">✔ defeated</span>' : (b.resolved ? '<span class="ok">✔ passed peacefully</span>' : '<span class="muted">encountered</span>');
+            return `<div class="bcard"><button class="namebtn" data-bdossier="${id}"><b>${esc(f.name)}</b> <span class="info" aria-hidden="true">ⓘ</span></button> <span class="tag">${esc(f.title)}</span> ${badge}</div>`;
           }).join('')}</div>` : ``}
-        <h3>Entries</h3>
-        <div class="entries">
-          ${entries.map(c => `
-            <details ${state && state.studied[c.id] ? 'open' : ''} data-cid="${c.id}">
-              <summary>${esc(c.title)} <span class="tag">${esc(c.category)}</span>${state && state.studied[c.id] ? ' <span class="ok">studied</span>' : ''}</summary>
+        <h3>Lore</h3>
+        ${known.length ? `<div class="entries">${entries.map(c => `
+            <details open data-cid="${c.id}">
+              <summary>${esc(c.title)} <span class="tag">${esc(c.category)}</span></summary>
               <p class="prose">${esc(c.summary)}</p>
               <p class="cite">📖 ${esc(c.citation)}</p>
-            </details>`).join('')}
-        </div>
+            </details>`).join('')}</div>`
+          : `<p class="muted empty">Your Codex is empty. You learn by paying attention — Observe, Probe, and Recall what you meet on the road, and it will be written here.</p>`}
       </div>`);
     const back = () => (from === 'title' || from === 'victory') ? title() : route();
     on('[data-a="back"]', 'click', back);
     on('[data-bdossier]', 'click', (e) => openDossier(e.target.closest('[data-bdossier]').dataset.bdossier));
-    el.querySelector('#q').addEventListener('input', (e) => codex(from, e.target.value));
-    on('details', 'toggle', (e) => {
-      if (!state || !e.target.open) return;
-      const cid = e.target.dataset.cid;
-      if (!state.studied[cid]) { Engine.readCodex(state, cid); save(); }
-    });
+    const q = el.querySelector('#q');
+    if (q) q.addEventListener('input', (e) => codex(from, e.target.value));
   }
 
   // ---- Character dossier modal -----------------------------------------
-  // What the player could plausibly know right now about a given being.
   function knownState(enemyId) {
     const enc = (state && state.encounter && state.encounter.enemyId === enemyId) ? state.encounter : null;
     const b = state && state.bestiary[enemyId];
-    const full = !!(b && (b.defeated || b.resolved));   // resolving teaches you everything
+    const full = !!(b && (b.defeated || b.resolved));
     return {
       observe: full || !!(enc && enc.reads.observe),
       probe:   full || !!(enc && enc.reads.probe),
-      study:   full || (state && Engine.hasStudiedFoe(state, enemyId)) || !!(enc && enc.reads.recall),
+      study:   full || !!(enc && enc.reads.recall),
     };
   }
 
   const GATE_HINT = {
     observe: 'Observe it to learn more.',
     probe:   'Probe it to learn more.',
-    study:   'Study it in the Codex to learn more.',
+    study:   'Recall its lore to understand what it truly is.',
   };
 
   function openDossier(enemyId) {

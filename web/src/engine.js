@@ -2,40 +2,41 @@
  * engine.js — turn-based encounter logic + world state.
  * Mutates a `state` object and appends log lines. No DOM here.
  *
- * An encounter can end three ways:
- *   - combat: apply the right approach (weakness) — or die trying (backfire)
- *   - peaceful: an interaction (withdraw / parley / misdirect / converse)
- *   - death: player HP hits zero
+ * The journey is LINEAR (a sequence of scenes). The Codex starts EMPTY and
+ * fills as you take turns: every Read teaches you something and writes it in.
+ * Knowledge persists across encounters, so later foes build on earlier ones.
  */
 const Engine = (() => {
   const PLAYER_MAX_HP = 3;
 
   function newGame() {
     return {
-      version: 2,
+      version: 3,
       hp: PLAYER_MAX_HP,
       maxHp: PLAYER_MAX_HP,
-      node: GAME_DATA.scenario.startNode,
+      scene: 0,          // index into scenario.scenes
       otataralUses: 1,
-      studied: {},     // codexId -> true
-      bestiary: {},    // enemyId -> { defeated, resolved, weaknessKnown }
-      cleared: {},     // nodeId -> true
+      studied: {},       // codexId -> true  (blank at start)
+      bestiary: {},      // enemyId -> { defeated, resolved, weaknessKnown }
       encounter: null,
       won: false,
       dead: false,
     };
   }
 
+  // Keep hard-won knowledge across a death; reset the run itself.
+  function retryKeepingLore(state) {
+    return Object.assign(newGame(), { studied: state.studied, bestiary: state.bestiary });
+  }
+
   function readCodex(state, codexId) {
     state.studied[codexId] = true;
     const entry = GAME_DATA.codex.find(c => c.id === codexId);
     (entry?.revealsWeaknessFor || []).forEach(eid => {
-      const b = (state.bestiary[eid] ||= { defeated: false, resolved: false, weaknessKnown: false });
-      b.weaknessKnown = true;
+      (state.bestiary[eid] ||= { defeated: false, resolved: false, weaknessKnown: false }).weaknessKnown = true;
     });
   }
 
-  // Has the player read any codex entry that reveals this foe's weakness/nature?
   function hasStudiedFoe(state, enemyId) {
     return GAME_DATA.codex.some(c =>
       (c.revealsWeaknessFor || []).includes(enemyId) && state.studied[c.id]);
@@ -45,44 +46,59 @@ const Engine = (() => {
     const foe = GAME_DATA.enemies[enemyId];
     state.encounter = {
       enemyId,
+      turn: 0,
       wounds: foe.wounds,
       reads: { observe: false, probe: false, recall: false },
+      knownAtStart: hasStudiedFoe(state, enemyId),  // did prior lore already cover this foe?
       log: [foe.intro],
       over: false,
     };
     return state.encounter;
   }
 
-  // Gather information. Probe provokes a reaction.
+  // Reading is how you learn. Each read is a turn and writes lore to the Codex.
   function read(state, kind) {
     const enc = state.encounter;
     const foe = GAME_DATA.enemies[enc.enemyId];
     if (enc.over) return;
-    if (kind === 'recall' && !hasStudiedFoe(state, enc.enemyId)) {
-      enc.log.push('You search your memory and find nothing certain. Study it in the Codex first.');
+    if (enc.reads[kind]) { enc.log.push('You have already learned what that will tell you.'); return; }
+    if (kind === 'recall' && !(enc.reads.observe || enc.reads.probe || enc.knownAtStart)) {
+      enc.log.push('You reach for a memory that isn’t there yet. Look closer first.');
       return;
     }
-    if (enc.reads[kind]) { enc.log.push('You have already learned what that will tell you.'); return; }
+
     enc.reads[kind] = true;
+    enc.turn++;
     enc.log.push('» ' + foe.clues[kind]);
+
+    const rev = foe.reveals && foe.reveals[kind];
+    if (rev) (Array.isArray(rev) ? rev : [rev]).forEach(cid => {
+      if (!state.studied[cid]) {
+        readCodex(state, cid);
+        const t = GAME_DATA.codex.find(c => c.id === cid);
+        enc.log.push('✧ Codex updated — ' + (t ? t.title : cid));
+      }
+    });
+
     if (kind === 'recall') markKnown(state, enc.enemyId);
     if (kind === 'probe' && !foe.noFight) damagePlayer(state, 1, 'It answers your prodding with a blow. (-1)');
   }
 
-  // A combat approach.
+  // A combat approach (a turn).
   function act(state, approachId) {
     const enc = state.encounter;
     const foe = GAME_DATA.enemies[enc.enemyId];
     if (enc.over) return;
+    enc.turn++;
 
-    if (foe.noFight) {                     // some things must not be fought
+    if (foe.noFight) {
       enc.log.push((foe.attackLethal ? '✖ ' : '· ') + (foe.onAttack || 'Your attack finds nothing worth the name.'));
       if (foe.attackLethal) damagePlayer(state, 99, null);
       return { outcome: foe.attackLethal ? 'death' : 'nofight' };
     }
 
     if (approachId === 'otataral') {
-      if (state.otataralUses <= 0) { enc.log.push('Your otataral is spent.'); return; }
+      if (state.otataralUses <= 0) { enc.log.push('Your otataral is spent.'); enc.turn--; return; }
       state.otataralUses--;
     }
 
@@ -105,20 +121,21 @@ const Engine = (() => {
     return { outcome };
   }
 
-  // A non-combat resolution: withdraw, parley, misdirect, converse, etc.
+  // A non-combat resolution (a turn). `needs` names a codex entry you must know.
   function interact(state, id) {
     const enc = state.encounter;
     const foe = GAME_DATA.enemies[enc.enemyId];
     if (enc.over) return;
     const it = (foe.interactions || []).find(x => x.id === id);
     if (!it) return;
-    const branch = (it.needsStudy && !hasStudiedFoe(state, enc.enemyId)) ? it.blind : it.success;
+    enc.turn++;
+    const known = !it.needs || !!state.studied[it.needs];
+    const branch = known ? it.success : it.blind;
     enc.log.push('» ' + branch.text);
 
     if (branch.effect === 'provoke') { damagePlayer(state, branch.dmg || 1, null); return { outcome: 'provoke' }; }
-    // effect === 'resolve'
     if (branch.boon) applyBoon(state, branch.boon);
-    resolvePeace(state, foe, !!branch.win);
+    resolvePeace(state, foe);
     return { outcome: 'resolve' };
   }
 
@@ -126,7 +143,7 @@ const Engine = (() => {
     const enc = state.encounter;
     if (boon.otataral) { state.otataralUses += boon.otataral; enc.log.push('✧ You gain an otataral shard.'); }
     if (boon.study) (Array.isArray(boon.study) ? boon.study : [boon.study]).forEach(cid => {
-      if (!state.studied[cid]) { readCodex(state, cid); }
+      if (!state.studied[cid]) { readCodex(state, cid); enc.log.push('✧ Codex updated — ' + (GAME_DATA.codex.find(c => c.id === cid)?.title || cid)); }
     });
   }
 
@@ -134,17 +151,13 @@ const Engine = (() => {
     const enc = state.encounter;
     enc.over = true; enc.result = 'kill';
     markKnown(state, foe.id, { defeated: true });
-    state.cleared[state.node] = true;
-    if (GAME_DATA.scenario.winNode === state.node && foe.boss) state.won = true;
     enc.log.push('— ' + foe.name + ' is undone.');
   }
 
-  function resolvePeace(state, foe, win) {
+  function resolvePeace(state, foe) {
     const enc = state.encounter;
     enc.over = true; enc.result = 'peace';
     markKnown(state, foe.id, { resolved: true });
-    state.cleared[state.node] = true;
-    if (win) state.won = true;
     enc.log.push('— You leave ' + foe.name + ' behind, and walk on breathing.');
   }
 
@@ -163,16 +176,8 @@ const Engine = (() => {
     }
   }
 
-  function flee(state) {
-    const enc = state.encounter;
-    enc.over = true; enc.fled = true; enc.result = 'flee';
-    enc.log.push('You break away and fall back to safer ground.');
-  }
-
-  function move(state, toNodeId) { state.node = toNodeId; state.encounter = null; }
-
   return {
-    PLAYER_MAX_HP, newGame, readCodex, hasStudiedFoe,
-    startEncounter, read, act, interact, flee, move,
+    PLAYER_MAX_HP, newGame, retryKeepingLore, readCodex, hasStudiedFoe,
+    startEncounter, read, act, interact,
   };
 })();

@@ -34,13 +34,14 @@ const GAME_DATA = {
         recall:  'A D’ivers on the Path of Hands: one mad will in a thousand bodies. No duel touches it — only fire across the whole mass. Or, since it hunts the strongest scent of power, give it a greater one to chase and be gone.',
       },
       codexRefs: ['soletaken_divers', 'path_of_hands', 'tellann'],
+      reveals: { observe: 'soletaken_divers', probe: 'path_of_hands', recall: 'tellann' },
       weakness: ['tellann'],
       backfire: [],
       neutral:  ['strike', 'omtose', 'otataral'],
       onWeakness: 'Fire washes across the whole tide at once. With no single body to flee into, Gryllen dies as one screaming mass.',
       onNeutral: 'You kill a dozen. A thousand remain, and they are on you.',
       interactions: [
-        { id: 'misdirect', label: 'Draw it off with a greater scent', needsStudy: true,
+        { id: 'misdirect', label: 'Draw it off with a greater scent', needs: 'path_of_hands',
           success: { text: 'You know what drives it: the Path of Hands, and the strongest spoor of power. You fling a warren wide toward the barrows and the sea — and Gryllen turns, hungering, away from you. You are already gone.', effect: 'resolve' },
           blind:   { text: 'You simply run. A tide of madness is faster than any mortal. It surges over your heels.', effect: 'provoke', dmg: 1 } },
       ],
@@ -58,13 +59,14 @@ const GAME_DATA = {
         recall:  'Onos T’oolan, once First Sword of the T’lan Imass. Sorcery is wasted on the ancient dead — they must be shattered, or unmade by otataral. But this one keeps its honour. It may not be an enemy. Name yourself no foe of the Imass, and it may lower its blade.',
       },
       codexRefs: ['tlan_imass', 'otataral', 'tool_lore'],
+      reveals: { observe: 'tlan_imass', probe: 'tool_lore', recall: 'otataral' },
       weakness: ['strike', 'otataral'],
       backfire: [],
       neutral:  ['tellann', 'omtose'],
       onWeakness: 'You do not try to kill what is already dead — you shatter it, driving the pieces apart until the will binding them fails.',
       onNeutral: 'Your warren breaks over it like surf on stone. It endures, and takes a slow step closer.',
       interactions: [
-        { id: 'speak', label: 'Declare yourself no enemy of the Imass', needsStudy: true,
+        { id: 'speak', label: 'Declare yourself no enemy of the Imass', needs: 'tool_lore',
           success: { text: 'You name the Ritual of Tellann and the long war with respect, and swear you are no foe of the Imass. The ancient warrior studies you, then lowers its flint blade. In a voice like grinding stone it warns you: beware the shore, and the Lord who waits there.', effect: 'resolve', boon: { study: ['anomander_rake'] } },
           blind:   { text: 'You babble something about mercy. It does not understand mercy, and it does not trust ignorance. The flint sword moves.', effect: 'provoke', dmg: 1 } },
       ],
@@ -84,11 +86,12 @@ const GAME_DATA = {
         recall:  'This is Anomander Rake — Soletaken black dragon, bearer of Dragnipur, Lord of the Tiste Andii of Moon’s Spawn. Raise a hand against him and you are already dead. But he has no quarrel with the likes of you. Withdraw, or speak with respect, and walk away breathing.',
       },
       codexRefs: ['anomander_rake', 'kurald_galain', 'dragnipur', 'soletaken_divers', 'ascendants'],
+      reveals: { observe: 'soletaken_divers', probe: 'kurald_galain', recall: 'anomander_rake' },
       weakness: [], backfire: [], neutral: [],
       interactions: [
         { id: 'withdraw', label: 'Withdraw slowly, hands open', needsStudy: false,
           success: { text: 'You lower your eyes, open your hands, and back away step by careful step. Anomander Rake watches you go, unmoving, and says nothing. The wind off the sea is the only sound. You live — because you understood the one move that mattered: you did not raise your hand.', effect: 'resolve', win: true } },
-        { id: 'parley', label: 'Name him, and speak with respect', needsStudy: true,
+        { id: 'parley', label: 'Name him, and speak with respect', needs: 'anomander_rake',
           success: { text: 'You name him — Lord of Moon’s Spawn, Son of Darkness — and say plainly that you seek no quarrel. Something almost like weary amusement crosses his face. “Then we have none,” he answers, and stands aside. You pass, and the shore lets you go.', effect: 'resolve', win: true },
           blind:   { text: 'You start to speak without the faintest idea what you are addressing. The dark at his feet rises to your knees; the temperature drops. His gaze settles on you like a closing door. You sense, with perfect clarity, that a second word may be your last.', effect: 'provoke', dmg: 1 } },
       ],
@@ -108,6 +111,7 @@ const GAME_DATA = {
         recall:  'Only Kruppe — of Darujhistan, hero of his own endless tale, harmless as he insists and cleverer than he admits, a man touched by luck and by dreams. There is nothing here to fight. Listen, and you may leave richer than you came.',
       },
       codexRefs: ['kruppe'],
+      reveals: { observe: 'kruppe', recall: 'kruppe' },
       weakness: [], backfire: [], neutral: [],
       interactions: [
         { id: 'listen', label: 'Let Kruppe talk', needsStudy: false,
@@ -216,18 +220,29 @@ const GAME_DATA = {
       citation: 'Malazan Book of the Fallen — a central theme across the series', revealsWeaknessFor: ['rake'] },
   ],
 
-  // ---- Scenario ---------------------------------------------------------
+  // ---- Scenario: a LINEAR, turn-based journey ---------------------------
+  // The road runs one way. Between encounters you rest (and heal). What you
+  // learn from each foe is written into a Codex that starts empty — and the
+  // next encounter builds on it.
   scenario: {
     id: 'scenario1',
     title: 'The Barrows of Morn',
-    startNode: 'camp',
-    winNode: 'shore',
-    nodes: {
-      camp:      { id: 'camp',      name: 'A Cold Camp', desc: 'A dead fire and old stones. Safe, for now. A crossroads lies west, a wind-scoured ridge north, the barrows east, and a long slope down to the grey shore.', exits: { crossroads: 'crossroads', ridge: 'ridge', barrows: 'barrows', shore: 'shore' } },
-      crossroads:{ id: 'crossroads',name: 'The Crossroads', desc: 'Four worn roads meet under a leaning signpost whose words have long weathered away.', exits: { back: 'camp' }, enemy: 'kruppe' },
-      ridge:     { id: 'ridge',     name: 'The Wind-Scoured Ridge', desc: 'Bare rock and a sound like water where there is no water.', exits: { back: 'camp' }, enemy: 'gryllen' },
-      barrows:   { id: 'barrows',   name: 'The Barrows', desc: 'Grass-covered mounds. One has been open a very long time.', exits: { back: 'camp' }, enemy: 'tool' },
-      shore:     { id: 'shore',     name: 'The Grey Shore', desc: 'Black sand and a robed figure waiting at the waterline, patient as stone.', exits: { back: 'camp' }, enemy: 'rake' },
-    },
+    scenes: [
+      { type: 'narration', title: 'The Road to Morn',
+        text: 'You are no one of consequence, walking a road you should perhaps have left alone. The Barrows of Morn lie ahead — old ground, and ill-famed. You carry a blade, a little sorcery, and no illusions about your own importance. Where the road forks, a round little man is already waving you over.' },
+      { type: 'encounter', enemy: 'kruppe' },
+
+      { type: 'narration', title: 'The Wind-Scoured Ridge',
+        text: 'The road climbs to a bare ridge where the wind makes a sound like water over stones. You rest a moment, and gather yourself. Then the ground ahead begins, impossibly, to move toward you.' },
+      { type: 'encounter', enemy: 'gryllen' },
+
+      { type: 'narration', title: 'The Barrows',
+        text: 'Beyond the ridge lie the barrows themselves — grass-grown mounds, silent under a low sky. You catch your breath among them. One mound has been open a very long time, and something within it is rising.' },
+      { type: 'encounter', enemy: 'tool' },
+
+      { type: 'narration', title: 'The Grey Shore',
+        text: 'The land falls away to a shore of black sand and grey water. You steady yourself for whatever waits below. A single robed figure stands at the waterline, patient as stone — and as you descend, it turns to face you.' },
+      { type: 'encounter', enemy: 'rake' },
+    ],
   },
 };

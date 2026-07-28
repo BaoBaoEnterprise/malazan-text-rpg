@@ -61,6 +61,8 @@ button.danger { border-color: var(--danger); }
 .pip { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--danger); display: inline-block; }
 .pip.on { background: var(--danger); }
 .ota { color: var(--accent); font-size: .8rem; margin-left: 8px; }
+.turn { color: var(--muted); font-size: .8rem; letter-spacing: .5px; align-self: center; }
+.empty { padding: 18px 0; line-height: 1.6; }
 
 /* encounter log */
 .log { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
