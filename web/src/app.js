@@ -63,10 +63,12 @@
 
   function route() {
     if (!state) return title();
+    // Always show the encounter resolution (killing blow / death line) before
+    // routing on to a win or game-over screen.
+    if (state.encounter && state.encounter.over) return encounterEnd();
     if (state.dead) return gameover();
     if (state.won)  return victory();
-    if (state.encounter && !state.encounter.over) return encounter();
-    if (state.encounter && state.encounter.over)  return encounterEnd();
+    if (state.encounter) return encounter();
     return explore();
   }
 
