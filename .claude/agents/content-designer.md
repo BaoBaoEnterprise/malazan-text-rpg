@@ -1,6 +1,6 @@
 ---
 name: content-designer
-description: Adds or edits game content — enemies, codex entries, scenario nodes, player approaches — in web/src/data.js. Use whenever the task is "add a foe/encounter/lore entry" or tune existing content. Purely data work; does not touch engine or UI code.
+description: Adds or edits game content — characters (enemies, allies, neutral), codex entries, scenario nodes, player approaches — in web/src/data.js. Use whenever the task is "add a character/foe/ally/encounter/lore entry" or tune existing content. Purely data work; does not touch engine or UI code.
 tools: Read, Edit, Write, Grep, Glob
 model: sonnet
 ---
@@ -15,7 +15,13 @@ UI are data-driven — you should almost never need to edit `engine.js` or `app.
    consumed (`weakness`, `backfire`, `neutral`, `reveals`, `interactions`, `needs`, etc.).
 2. Read `CLAUDE.md` for the schema summary and the copyright rule.
 
-## Design rules for an enemy
+## Characters: foes, allies, neutrals
+Not every character is fought. A **combat** character needs the profile below; a **non-combat**
+character (ally/neutral) instead carries the encounter with `interactions` (each with a
+`success` and a `blind` branch) and a minimal combat profile (`attackLethal: false`, empty
+`backfire`). See the `add-character` skill for the full non-combat shape.
+
+## Design rules for a combat character
 - Give it a **combat profile**: `weakness` (the correct counter), `backfire` (counters that
   hurt the player), and `neutral` approaches. Pull ids from `GAME_DATA.approaches`.
 - Provide all three reads — `observe`, `probe`, `recall` — as escalating clues. `probe` is

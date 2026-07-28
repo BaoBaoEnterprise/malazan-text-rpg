@@ -26,7 +26,7 @@ directly and work offline as a PWA.
 ## Where changes go
 
 - **New enemy, codex entry, or scenario node → `src/data.js` only.** The engine and UI are
-  data-driven; adding content should need *no* code changes. Use the `/add-enemy` command
+  data-driven; adding content should need *no* code changes. Use the `/add-character` command
   or the `content-designer` agent.
 - **New mechanic / state transition → `src/engine.js`** (keep it pure: state in, result
   out, no DOM). Then wire the UI in `src/app.js`. Use the `engine-dev` agent.
