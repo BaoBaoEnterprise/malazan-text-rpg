@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+# Block book-corpus files from ever being committed, even via `git add -f`
+# (Living World plan §5 rule 5). Installed by dev.sh via:
+#   git config core.hooksPath .githooks
+set -euo pipefail
+
+blocked=$(git diff --cached --name-only | grep -E \
+  '^lore/(books/|raw/|corpus\.db$|lore\.db$)' || true)
+
+if [ -n "$blocked" ]; then
+  echo "COMMIT BLOCKED — staged files under private lore paths:" >&2
+  echo "$blocked" | sed 's/^/  /' >&2
+  echo "The book corpus and raw caches must never enter the repo." >&2
+  echo "Unstage with: git restore --staged <path>" >&2
+  exit 1
+fi

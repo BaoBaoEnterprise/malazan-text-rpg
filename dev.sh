@@ -5,6 +5,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 
+# Corpus-path guard (blocks committing book files even with git add -f).
+git config core.hooksPath .githooks 2>/dev/null || true
+
 if [ ! -d .venv ]; then
   echo "Creating virtualenv..."
   python3 -m venv .venv

@@ -18,7 +18,8 @@ import json
 import sys
 
 from server import claude_harness, guardian
-from .db import ENTRIES_JSONL, ENTRY_TYPES, build_lore_db, validate_entry
+from .db import (ENTRIES_JSONL, ENTRY_TYPES, build_lore_db, open_corpus,
+                 validate_entry)
 from .wiki import get_page
 
 SYSTEM_PROMPT = """You are the lore scribe for a non-commercial Malazan fan
@@ -42,7 +43,7 @@ def generate(topics, entries_path=None, use_wiki=True, progress=print):
     entries.jsonl; returns (accepted, rejected) lists."""
     path = entries_path or ENTRIES_JSONL
     existing = {e['slug'] for e in load_entries(path)}
-    index = guardian.NgramIndex()
+    index = guardian.artifact_index()
     progress(f'guardian n-gram sources: {index.sources or "NONE (degraded)"}')
 
     accepted, rejected = [], []
@@ -50,7 +51,11 @@ def generate(topics, entries_path=None, use_wiki=True, progress=print):
         title, _, etype = topic.partition(':')
         etype, _, tier_cap = etype.partition('@')
         etype = etype or 'character'
-        tier_cap = int(tier_cap) if tier_cap else None
+        try:
+            tier_cap = int(tier_cap) if tier_cap else None
+        except ValueError:
+            rejected.append((topic, f'bad tier cap {tier_cap!r}'))
+            continue
         if etype not in ENTRY_TYPES:
             rejected.append((topic, f'bad type {etype!r}'))
             continue
@@ -71,6 +76,9 @@ def generate(topics, entries_path=None, use_wiki=True, progress=print):
             progress(f'REJECT {topic}: {problem}')
             continue
 
+        for warning in spot_check_citations(entry):
+            progress(f'WARN   {entry["slug"]}: {warning}')
+
         entry['sources'] = sorted(
             set(entry.get('sources', [])) |
             ({f'wiki:{wiki_page["title"]}'} if wiki_page else {'model'}))
@@ -87,8 +95,8 @@ def generate(topics, entries_path=None, use_wiki=True, progress=print):
 
 
 def check(entries_path=None):
-    """Guardian + schema re-check of every committed entry. Returns problems."""
-    index = guardian.NgramIndex()
+    """Guardian + schema + citation re-check of every committed entry."""
+    index = guardian.artifact_index()
     problems = []
     for e in load_entries(entries_path or ENTRIES_JSONL):
         try:
@@ -99,7 +107,45 @@ def check(entries_path=None):
         result = guardian.check_artifact(e['summary'], index)
         if not result['ok']:
             problems.append((e['slug'], f"n-gram overlap: {result['spans'][:2]}"))
+        for warning in spot_check_citations(e):
+            problems.append((e['slug'], warning))
     return problems
+
+
+def spot_check_citations(entry, corpus_db=None):
+    """Server-side citation sanity check against the corpus (plan §2.2).
+    Searches the cited book's chunks for the entry's key terms and returns
+    warning strings when a citation looks unsupported. Counts only — no
+    chunk text is fetched, nothing returns to the model. Silently a no-op
+    when no corpus has been ingested on this machine."""
+    try:
+        con = open_corpus(corpus_db)
+    except FileNotFoundError:
+        return []
+    warnings = []
+    stop = {'with', 'from', 'that', 'this', 'their', 'they'}
+    distinctive = [w for w in ''.join(
+        c if c.isalnum() or c in "'’" else ' '
+        for c in entry['title']).split() if len(w) >= 4 and w.lower() not in stop]
+    if not distinctive:
+        return []
+    terms = ' OR '.join(f'"{w}"' for w in distinctive)
+    for cite in entry['citations']:
+        book = cite['book']
+        known = con.execute(
+            'SELECT 1 FROM book_chunks WHERE book = ? LIMIT 1', (book,)).fetchone()
+        if not known:
+            warnings.append(f'cited book {book!r} not in corpus')
+            continue
+        hits = con.execute(
+            'SELECT count(*) FROM chunks_fts f JOIN book_chunks c'
+            ' ON c.id = f.rowid WHERE chunks_fts MATCH ? AND c.book = ?',
+            (terms, book)).fetchone()[0]
+        if hits == 0:
+            warnings.append(
+                f'no chunk in {book!r} matches the entry title terms — '
+                'citation may be misattributed')
+    return warnings
 
 
 def load_entries(path=None):

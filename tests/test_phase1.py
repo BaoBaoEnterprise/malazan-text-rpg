@@ -121,7 +121,7 @@ def test_guardian_flags_copied_prose(corpus):
 
 
 def test_prompt_tripwire_blocks_before_subprocess(corpus, monkeypatch):
-    index = guardian.NgramIndex(corpus_db=corpus, wiki_cache='/nonexistent')
+    index = guardian.prompt_index(corpus_db=corpus)
     monkeypatch.setattr(claude_harness, '_boundary_index', index)
 
     def no_subprocess(*a, **k):
@@ -191,6 +191,45 @@ def test_wiki_cache_and_attribution(tmp_path):
     out = tmp_path / 'ATTRIBUTION.md'
     assert write_attribution(raw, out) == 1
     assert 'Sample Page' in out.read_text()
+
+
+def test_wiki_text_allowed_in_prompts_but_not_book_text(corpus, tmp_path):
+    """The sanctioned grounding path: wiki extracts may appear verbatim in
+    prompts (check_prompt ignores wiki), while book chunks still trip."""
+    raw = tmp_path / 'raw'
+    raw.mkdir()
+    wiki_text = ('The invented reference wiki says the harbor town of Pale '
+                 'Reach was founded by retired soldiers of an older empire.')
+    (raw / 'pale_reach.json').write_text(json.dumps({
+        'title': 'Pale Reach', 'extract': wiki_text, 'url': 'x',
+        'fetched_at': '2026-07-31'}))
+
+    p_index = guardian.NgramIndex(corpus_db=corpus, wiki_cache=raw,
+                                  include_wiki=False)
+    assert p_index.sources == ['books']
+    guardian.check_prompt('Ground yourself in this wiki extract: ' + wiki_text,
+                          p_index)  # must NOT raise
+    with pytest.raises(guardian.BoundaryViolation):
+        guardian.check_prompt('Summarize: ' + BOOK_TWO[100:300], p_index)
+
+    a_index = guardian.NgramIndex(corpus_db=corpus, wiki_cache=raw)
+    assert set(a_index.sources) == {'books', 'wiki'}
+    assert not guardian.check_artifact('As is said: ' + wiki_text, a_index)['ok']
+
+
+def test_spot_check_citations(corpus):
+    from lore.entries import spot_check_citations
+    ok_entry = dict(GOOD_ENTRY,
+                    title='The shard in the tollhouse cellar',
+                    citations=[{'book': 'Stand-In Book One'}])
+    assert spot_check_citations(ok_entry, corpus_db=corpus) == []
+    bad_book = dict(GOOD_ENTRY, citations=[{'book': 'No Such Book'}])
+    assert 'not in corpus' in spot_check_citations(bad_book, corpus_db=corpus)[0]
+    misattributed = dict(GOOD_ENTRY,
+                         title='Ethrin of the Broken Hill',
+                         citations=[{'book': 'Stand-In Book One'}])
+    warns = spot_check_citations(misattributed, corpus_db=corpus)
+    assert warns and 'misattributed' in warns[0]
 
 
 def test_guardian_catches_wiki_overlap(tmp_path):

@@ -28,20 +28,20 @@ class HarnessError(Exception):
     """A claude invocation failed after retries (timeout, bad JSON, CLI error)."""
 
 
-_boundary_index = None
+_boundary_index = None  # test override; production builds a fresh index per call
 
 
 def _check_boundary(*texts):
     """Text-boundary tripwire (plan §2.5): no outgoing prompt may contain
-    source n-grams. A trip is a bug in the caller, so BoundaryViolation
-    propagates — never catch it and retry."""
-    global _boundary_index
+    BOOK n-grams (wiki text is sanctioned prompt grounding). A trip is a bug
+    in the caller, so BoundaryViolation propagates — never catch and retry.
+    The index is books-only and rebuilt per call: one read-only sqlite open,
+    so it stays fresh after ingest and safe under threaded callers."""
     from . import guardian
-    if _boundary_index is None:
-        _boundary_index = guardian.NgramIndex()
+    index = _boundary_index or guardian.prompt_index()
     for t in texts:
         if t:
-            guardian.check_prompt(t, _boundary_index)
+            guardian.check_prompt(t, index)
 
 
 def availability():

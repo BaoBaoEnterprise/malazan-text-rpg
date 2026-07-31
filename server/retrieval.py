@@ -18,6 +18,8 @@ import json
 from lore import embed
 from lore.db import open_corpus, open_lore
 
+# 'guardian' is reserved for Phase 2's model-gate (artifact vs. source
+# comparison); Phase 1's n-gram and citation checks read only hashes/counts.
 QUOTE_PURPOSES = ('quote_panel', 'guardian')
 
 

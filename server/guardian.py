@@ -8,13 +8,17 @@
   leaked raw chunk text into a prompt — that is a BUG in the text boundary,
   so it raises instead of returning; callers must not catch-and-retry.
 
-Both compare normalized 8-word shingles against corpus.db's ngram index
-(books) plus any cached wiki pages. If no corpus exists on this machine the
-checks run against whatever sources are present (possibly none) — check()
-reports which sources were loaded so callers can log degraded coverage.
+The two checks use DIFFERENT source sets. Wiki text is *allowed* in prompts
+by design (plan §2.2 grounds entry generation on it), so check_prompt guards
+book chunks only — prompt_index(). check_artifact guards books AND wiki,
+since generated content must copy neither — artifact_index(). If no corpus
+exists on this machine the checks run against whatever sources are present
+(possibly none); results report which sources were loaded so callers can log
+degraded coverage.
 """
 
 import json
+import urllib.parse
 from pathlib import Path
 
 from lore.db import CORPUS_DB
@@ -28,21 +32,21 @@ class BoundaryViolation(Exception):
 
 
 class NgramIndex:
-    def __init__(self, corpus_db=None, wiki_cache=None):
+    def __init__(self, corpus_db=None, wiki_cache=None, include_wiki=True):
         self.sources = []
-        self._book_hashes = None
         self._wiki_hashes = set()
 
         db_path = Path(corpus_db) if corpus_db else CORPUS_DB
         if db_path.exists():
             import sqlite3
-            self._con = sqlite3.connect(f'file:{db_path}?mode=ro', uri=True)
+            uri = f'file:{urllib.parse.quote(str(db_path))}?mode=ro'
+            self._con = sqlite3.connect(uri, uri=True)
             self.sources.append('books')
         else:
             self._con = None
 
         cache = Path(wiki_cache) if wiki_cache else WIKI_CACHE
-        if cache.is_dir():
+        if include_wiki and cache.is_dir():
             pages = list(cache.glob('*.json'))
             for p in pages:
                 text = json.loads(p.read_text()).get('extract', '')
@@ -69,16 +73,30 @@ class NgramIndex:
         return row is not None
 
 
+def prompt_index(corpus_db=None):
+    """Books-only index for the outgoing-prompt tripwire. Cheap to build
+    (one sqlite open, no wiki load) — safe to create per call, which also
+    keeps it fresh after an ingest and thread-safe under FastAPI's pool."""
+    return NgramIndex(corpus_db=corpus_db, include_wiki=False)
+
+
+def artifact_index(corpus_db=None, wiki_cache=None):
+    """Books + wiki index for vetting generated content."""
+    return NgramIndex(corpus_db=corpus_db, wiki_cache=wiki_cache)
+
+
 def check_artifact(text, index=None):
-    """-> {'ok': bool, 'spans': [...], 'sources': [...]} for generated content."""
-    index = index or NgramIndex()
+    """-> {'ok': bool, 'spans': [...], 'sources': [...]} for generated content.
+    Checks against books AND wiki: generated prose may copy neither."""
+    index = index or artifact_index()
     spans = index.overlapping_spans(text)
     return {'ok': not spans, 'spans': spans, 'sources': index.sources}
 
 
 def check_prompt(text, index=None):
-    """Raise BoundaryViolation if source text appears in an outgoing prompt."""
-    index = index or NgramIndex()
+    """Raise BoundaryViolation if BOOK text appears in an outgoing prompt.
+    Wiki text is legitimate prompt grounding and is not checked here."""
+    index = index or prompt_index()
     spans = index.overlapping_spans(text)
     if spans:
         raise BoundaryViolation(
