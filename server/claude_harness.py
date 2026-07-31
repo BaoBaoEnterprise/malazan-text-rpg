@@ -28,6 +28,22 @@ class HarnessError(Exception):
     """A claude invocation failed after retries (timeout, bad JSON, CLI error)."""
 
 
+_boundary_index = None  # test override; production builds a fresh index per call
+
+
+def _check_boundary(*texts):
+    """Text-boundary tripwire (plan §2.5): no outgoing prompt may contain
+    BOOK n-grams (wiki text is sanctioned prompt grounding). A trip is a bug
+    in the caller, so BoundaryViolation propagates — never catch and retry.
+    The index is books-only and rebuilt per call: one read-only sqlite open,
+    so it stays fresh after ingest and safe under threaded callers."""
+    from . import guardian
+    index = _boundary_index or guardian.prompt_index()
+    for t in texts:
+        if t:
+            guardian.check_prompt(t, index)
+
+
 def availability():
     """Report whether the claude CLI is usable. Cheap enough for /api/health."""
     path = shutil.which(CLAUDE_BIN)
@@ -82,6 +98,8 @@ def _invoke(prompt, system_prompt=None, model=None, timeout=DEFAULT_TIMEOUT,
         + _retry_context
         + '\nReply again with ONLY a valid JSON object.'
     )
+
+    _check_boundary(full_prompt, system_prompt)
 
     started = time.time()
     try:
