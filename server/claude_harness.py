@@ -110,6 +110,10 @@ def _invoke(prompt, system_prompt=None, model=None, timeout=DEFAULT_TIMEOUT,
         _log(role, model, started, ok=False, error=f'bad result JSON: {e}')
         if _retry_context is not None:
             raise HarnessError(f'model returned invalid JSON twice: {e}')
+        # The first call created the session, so a conversational retry must
+        # resume it — re-sending --session-id would collide with itself.
+        if extra_args and extra_args[0] == '--session-id':
+            extra_args = ['--resume', extra_args[1]]
         return _invoke(prompt, system_prompt=system_prompt, model=model,
                        timeout=timeout, role=role, extra_args=extra_args,
                        _retry_context=str(e))
@@ -123,7 +127,9 @@ def _parse_result_json(text):
     """Parse the model's reply as JSON, tolerating a markdown code fence."""
     text = text.strip()
     if text.startswith('```'):
-        text = text.split('\n', 1)[1] if '\n' in text else ''
+        text = text[3:]
+        if text.lstrip().startswith('json'):
+            text = text.lstrip()[4:]
         if text.rstrip().endswith('```'):
             text = text.rstrip()[:-3]
     return json.loads(text)
