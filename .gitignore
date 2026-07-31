@@ -17,3 +17,4 @@ world/*
 # Guard is in place before any book file ever lands on disk.
 lore/books/
 lore/raw/
+lore/corpus.db
