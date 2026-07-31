@@ -5,3 +5,15 @@ __pycache__/
 
 # Claude Code personal overrides
 .claude/settings.local.json
+
+# Server dev environment
+.venv/
+
+# Live game state (world.db, saves, telemetry) — never committed
+world/*
+!world/.gitkeep
+
+# Lore sources — PRIVATE, must never reach the public repo (plan §5).
+# Guard is in place before any book file ever lands on disk.
+lore/books/
+lore/raw/
